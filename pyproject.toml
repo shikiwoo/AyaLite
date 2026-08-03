@@ -1,13 +1,15 @@
 [project]
 name = "ayalite"
 version = "0.1.0"
-description = "Add your description here"
+description = "Discord bot for Twitch notifications"
 readme = "README.md"
 authors = [
     { name = "shiki", email = "shiki@shikiwoo.com" }
 ]
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "discord-py>=2.7.1",
+]
 
 [project.scripts]
 ayalite = "ayalite:main"

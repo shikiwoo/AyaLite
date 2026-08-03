@@ -1,2 +1,4 @@
-def main() -> None:
-    print("Hello from ayalite!")
+def main():
+    print("Hello from ayabot!! This is a work in progress!")
+
+main()

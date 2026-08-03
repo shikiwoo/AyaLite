@@ -11,4 +11,3 @@ wheels/
 
 # Secrets
 .env
-src/ayalite/
