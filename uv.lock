@@ -177,6 +177,7 @@ dependencies = [
     { name = "aiohttp" },
     { name = "discord-py" },
     { name = "python-dotenv" },
+    { name = "twitch-py" },
 ]
 
 [package.metadata]
@@ -184,6 +185,7 @@ requires-dist = [
     { name = "aiohttp", specifier = ">=3.14.3" },
     { name = "discord-py", specifier = ">=2.7.1" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
+    { name = "twitch-py", specifier = ">=4.0.4" },
 ]
 
 [[package]]
@@ -446,6 +448,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/82/ed/0301aeeac3e5353ef3d94b6ec08bbcabd04a72018415dcb29e588514bba8/python_dotenv-1.2.2.tar.gz", hash = "sha256:2c371a91fbd7ba082c2c1dc1f8bf89ca22564a087c2c287cd9b662adde799cf3", size = 50135, upload-time = "2026-03-01T16:00:26.196Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/0b/d7/1959b9648791274998a9c3526f6d0ec8fd2233e4d4acce81bbae76b44b2a/python_dotenv-1.2.2-py3-none-any.whl", hash = "sha256:1d8214789a24de455a8b8bd8ae6fe3c6b69a5e3d64aa8a8e5d68e694bbcb285a", size = 22101, upload-time = "2026-03-01T16:00:25.09Z" },
+]
+
+[[package]]
+name = "twitch-py"
+version = "4.0.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "aiohttp" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/5f/15/589caca7b506e5997e8ec76c0cc7ed00f111e65e89ddc866c80826498f46/twitch_py-4.0.4.tar.gz", hash = "sha256:84c702c6a9ff68f634274caad082e641800f5e0af120f3f7f34748da20280f73", size = 133688, upload-time = "2026-02-25T15:53:41.225Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7d/f8/b976dfdda92e3e4426849433b0c38580b56a67dfa4aab92a3fe652b8d432/twitch_py-4.0.4-py3-none-any.whl", hash = "sha256:64de124559839ce8ae94cac557277b0d415f5619f4e981ee42c32adf0612c42b", size = 148195, upload-time = "2026-02-25T15:53:40.15Z" },
 ]
 
 [[package]]
