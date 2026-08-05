@@ -14,3 +14,6 @@ class DiscordSender:
         # send message to channel with the provided ID
         channel = self.client.get_partial_messageable(channel_id)
         return await channel.send(content)
+
+    async def close(self) -> None:
+        await self.client.close()

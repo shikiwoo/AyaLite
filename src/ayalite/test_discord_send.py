@@ -24,4 +24,6 @@ async def main():
     message = await sender.send(channel_id, "AyaLite test message - Discord sending works!")
     print(f"Sent message to channel ID {channel_id}")
 
+    await sender.close()
+
 asyncio.run(main())
