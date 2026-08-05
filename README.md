@@ -8,6 +8,7 @@ discord bot for twitch notifs
 
 # current functionality 
 - check Twitch API for the token and store it
+- query Twitch API for channel(s) and report the findings back to the user 
 
 # planned features
 - check if a channel is live and send a message in a discord channel when it does go live
