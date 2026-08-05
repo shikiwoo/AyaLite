@@ -1,0 +1,7 @@
+poll_interval = 90  # recommended 60+ seconds, otherwise you'll hit rate limits
+announce_channel_id = # Discord channel ID here
+
+channels = [
+    "shikiwoo",
+    # Twitch channel names here
+]
