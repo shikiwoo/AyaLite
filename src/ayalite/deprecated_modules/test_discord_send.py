@@ -5,7 +5,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from ayalite.discord_sender import DiscordSender
+from ayalite.discord.discord_sender import DiscordSender
 
 load_dotenv()
 

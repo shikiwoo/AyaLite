@@ -4,8 +4,8 @@ import os
 import aiohttp
 from dotenv import load_dotenv
 
-from ayalite.twitch_status import TwitchGetter
-from ayalite.twitch_token import TokenManager
+from ayalite.deprecated_modules.twitch_status import TwitchGetter
+from ayalite.deprecated_modules.twitch_token import TokenManager
 
 import tomllib
 from pathlib import Path

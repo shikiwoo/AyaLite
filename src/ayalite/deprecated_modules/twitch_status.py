@@ -1,6 +1,6 @@
 import aiohttp
 
-from ayalite.twitch_token import TokenManager
+from ayalite.deprecated_modules.twitch_token import TokenManager
 
 HELIX_STREAMS = "https://api.twitch.tv/helix/streams"
 
