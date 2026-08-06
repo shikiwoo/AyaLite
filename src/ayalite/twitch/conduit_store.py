@@ -9,4 +9,6 @@ class ConduitStore:
         self._path.write_text(conduit_id)
 
     def read_id(self):
+        if not self._path.exists():
+            return None
         return self._path.read_text().strip()
