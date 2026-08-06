@@ -6,7 +6,7 @@ class ConduitStore:
         self._path = path
 
     def save_id(self, conduit_id):
-        self.path.write_text(conduit_id)
+        self._path.write_text(conduit_id)
 
     def read_id(self):
-        return self.path.read_text().strip()
+        return self._path.read_text().strip()
