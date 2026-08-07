@@ -11,7 +11,11 @@ from dotenv import load_dotenv
 from ayalite.discord_sender import DiscordSender
 from ayalite.twitch_client import Client
 from ayalite.twitch_conduit_store import ConduitStore
-from ayalite.twitch_events import EventHandlers
+from ayalite.twitch_events import (
+    DEFAULT_GOING_LIVE_TEXT,
+    EventHandlers,
+    validate_going_live_text,
+)
 
 _log = logging.getLogger(__name__)
 
@@ -28,6 +32,30 @@ class Config:
     twitch_client_secret: str
     announce_channel_id: int
     channels: list[str]
+    going_live_text: str = DEFAULT_GOING_LIVE_TEXT
+    ping_role_id: int | None = None
+
+
+def _parse_role_id(raw: object) -> int | None:
+    """Catch a mistyped role ID at startup instead of at announcement time.
+
+    A wrong-but-plausible snowflake still sends: discord renders an unresolvable
+    mention as raw text and pings nobody, with no error we could log.
+    """
+    if raw is None:
+        return None
+    if isinstance(raw, bool) or not isinstance(raw, (int, str)):
+        raise RuntimeError(f"ping_role_id must be a discord role ID, got {raw!r}")
+    try:
+        role_id = int(raw)
+    except ValueError as exc:
+        raise RuntimeError(f"ping_role_id must be a discord role ID, got {raw!r}") from exc
+
+    # snowflakes are unsigned 64-bit, and every real one minted since 2015 is at
+    # least 17 digits - a shorter value means someone pasted the wrong thing
+    if not 10**16 <= role_id < 2**64:
+        raise RuntimeError(f"ping_role_id is not a valid discord snowflake: {role_id}")
+    return role_id
 
 
 def load_config(config_path: Path = Path("config.toml")) -> Config:
@@ -41,6 +69,13 @@ def load_config(config_path: Path = Path("config.toml")) -> Config:
     except tomllib.TOMLDecodeError as exc:
         raise RuntimeError(f"could not parse {config_path}: {exc}") from exc
 
+    # optional: falls back to the built-in wording when the key is absent
+    going_live_text = toml_data.get("going_live_text", DEFAULT_GOING_LIVE_TEXT)
+    if not isinstance(going_live_text, str):
+        raise RuntimeError("going_live_text must be a string")
+    validate_going_live_text(going_live_text)
+    ping_role_id = _parse_role_id(toml_data.get("ping_role_id"))
+
     try:
         return Config(
             discord_token=os.environ["DISCORD_BOT_TOKEN"],
@@ -48,6 +83,8 @@ def load_config(config_path: Path = Path("config.toml")) -> Config:
             twitch_client_secret=os.environ["TWITCH_CLIENT_SECRET"],
             announce_channel_id=int(toml_data["announce_channel_id"]),
             channels=list(toml_data["channels"]),
+            going_live_text=going_live_text,
+            ping_role_id=ping_role_id,
         )
     except KeyError as exc:
         raise RuntimeError(f"missing required config value: {exc}") from exc
@@ -98,7 +135,13 @@ async def run() -> None:
         await client.authorize(conduit_id=conduit.id)
         await helper.sub_stream_events(client, streamer_ids)
 
-        handlers = EventHandlers(client, sender, config.announce_channel_id)
+        handlers = EventHandlers(
+            client,
+            sender,
+            config.announce_channel_id,
+            config.going_live_text,
+            config.ping_role_id,
+        )
         handlers.register()
 
         _log.info("watching for stream events: %s", ", ".join(streamer_ids))

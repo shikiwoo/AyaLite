@@ -4,3 +4,15 @@ channels = [
     "shikiwoo",
     # Twitch channel names here
 ]
+
+# Optional. Message shown in the live announcement embed.
+# Placeholders: {name} display name, {login} channel name, {url} channel link
+# Defaults to "{name} is now live!"
+# NOTE: a role mention put in here renders but does NOT ping - mentions only
+# notify from message content. Use ping_role_id below for that.
+# going_live_text = "{name} is live! Come hang out: {url}"
+
+# Optional. Role pinged alongside the announcement embed.
+# The role must be mentionable, or the bot needs the
+# "Mention @everyone, @here, and All Roles" permission.
+# ping_role_id = 123456789012345678

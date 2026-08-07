@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import string
 from collections import deque
 from dataclasses import dataclass
 
@@ -12,6 +13,39 @@ _log = logging.getLogger(__name__)
 
 OFFLINE_GRACE_PERIOD = 120 # seconds, blip window of 2min
 
+DEFAULT_GOING_LIVE_TEXT = "{name} is now live!"
+# everything here comes off the event itself, so rendering never needs an extra
+# helix call on the hot path
+GOING_LIVE_FIELDS = frozenset({"name", "login", "url"})
+
+
+def validate_going_live_text(text: str) -> str:
+    """Reject a bad template at startup rather than when someone goes live.
+
+    An unknown placeholder only blows up at .format() time, which would be the
+    middle of the night and one missed announcement later.
+    """
+    try:
+        parsed = list(string.Formatter().parse(text))
+    except ValueError as exc:
+        raise RuntimeError(f"going_live_text is not a valid template: {exc}") from exc
+
+    # strip any .attr / [index] suffix so {name.upper} validates on "name"
+    used = {
+        field.split(".")[0].split("[")[0]
+        for _, field, _, _ in parsed
+        if field is not None
+    }
+    unknown = used - GOING_LIVE_FIELDS
+    if unknown:
+        placeholders = ", ".join(sorted(f"{{{u}}}" for u in unknown))
+        allowed = ", ".join(sorted(f"{{{f}}}" for f in GOING_LIVE_FIELDS))
+        raise RuntimeError(
+            f"going_live_text uses unknown placeholder(s) {placeholders}; "
+            f"available: {allowed}"
+        )
+    return text
+
 @dataclass
 class LiveState:
     stream_id: str
@@ -19,10 +53,19 @@ class LiveState:
     offline_task: asyncio.Task | None = None
 
 class EventHandlers:
-    def __init__(self, client: ClientApp, sender: DiscordSender, announce_channel_id: int) -> None:
+    def __init__(
+        self,
+        client: ClientApp,
+        sender: DiscordSender,
+        announce_channel_id: int,
+        going_live_text: str = DEFAULT_GOING_LIVE_TEXT,
+        ping_role_id: int | None = None,
+    ) -> None:
         self._client = client
         self._sender = sender
         self._announce_channel_id = announce_channel_id
+        self._going_live_text = going_live_text
+        self._ping_role_id = ping_role_id
         self._live: dict[str, LiveState] = {}
         self._seen: deque[str] = deque(maxlen=512)
 
@@ -57,7 +100,9 @@ class EventHandlers:
         stream = next(iter(streams), None)
 
         embed = self._build_live_embed(event, stream)
-        msg = await self._sender.send_embed(self._announce_channel_id, embed)
+        msg = await self._sender.send_embed(
+            self._announce_channel_id, embed, self._ping_role_id
+        )
         self._live[login] = LiveState(stream_id=event.id, message_id=msg.id)
 
     async def on_stream_offline_v1(self, message: Event[StreamOfflineEvent]) -> None:
@@ -82,11 +127,25 @@ class EventHandlers:
             return
         await self._sender.mark_offline(self._announce_channel_id, state.message_id)
 
-    @staticmethod
-    def _build_live_embed(event: StreamOnlineEvent, stream) -> discord.Embed:
+    def _render_going_live(self, event: StreamOnlineEvent) -> str:
+        broadcaster = event.broadcaster
+        try:
+            return self._going_live_text.format(
+                name=broadcaster.name,
+                login=broadcaster.login,
+                url=f"https://twitch.tv/{broadcaster.login}",
+            )
+        except (KeyError, IndexError, ValueError, AttributeError):
+            # load_config already validated this, so reaching here means the
+            # template is odd in a way parsing missed. a plain announcement
+            # beats dropping the notification entirely.
+            _log.exception("could not render going_live_text, using the default")
+            return DEFAULT_GOING_LIVE_TEXT.format(name=broadcaster.name)
+
+    def _build_live_embed(self, event: StreamOnlineEvent, stream) -> discord.Embed:
         embed = discord.Embed(
             title=stream.title if stream else "Live on Twitch!",
-            description=f"{event.broadcaster.name} is now live!",
+            description=self._render_going_live(event),
             color=discord.Color.purple(),
         )
         if stream:

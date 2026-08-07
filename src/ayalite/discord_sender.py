@@ -142,9 +142,24 @@ class DiscordSender:
             # mask whatever actually brought the bot down
             _log.exception("discord gateway failed during shutdown")
 
-    async def send_embed(self, channel_id: int, embed: discord.Embed) -> discord.Message:
+    async def send_embed(
+        self, channel_id: int, embed: discord.Embed, ping_role_id: int | None = None
+    ) -> discord.Message:
         channel = self.client.get_partial_messageable(channel_id)
-        return await channel.send(embed=embed)
+        if ping_role_id is None:
+            return await channel.send(embed=embed)
+
+        # the ping has to ride in content: a mention placed inside an embed
+        # renders as a role chip but never notifies anyone. allowed_mentions is
+        # scoped to this one role so the announcement can't ping anything else,
+        # whatever ends up in the embed.
+        return await channel.send(
+            content=f"<@&{ping_role_id}>",
+            embed=embed,
+            allowed_mentions=discord.AllowedMentions(
+                everyone=False, users=False, roles=[discord.Object(id=ping_role_id)]
+            ),
+        )
 
     async def mark_offline(self, channel_id: int, message_id: int) -> None:
         channel = self.client.get_partial_messageable(channel_id)
@@ -154,4 +169,6 @@ class DiscordSender:
         embed = message.embeds[0]
         embed.color = discord.Color.greyple()  # dim it
         embed.set_footer(text="Offline")
-        await message.edit(embed=embed)
+        # content=None clears the role ping (the MISSING default would leave it
+        # in place); editing doesn't re-notify, so nobody gets pinged twice
+        await message.edit(content=None, embed=embed)
