@@ -1,5 +1,4 @@
-def main():
-    print("Hello from ayabot!! This is a work in progress!")
+from ayalite import main
 
 if __name__ == "__main__":
     main()
