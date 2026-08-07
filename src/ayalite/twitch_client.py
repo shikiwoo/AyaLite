@@ -23,7 +23,11 @@ class Client:
 
         users_info = await client.application.get_users(user_logins=set(logins))
         resolved = {u.identity.login: u.identity.id for u in users_info}
-        # missing = set(logins) - resolved.keys()
+
+        # log missing logins as errors:
+        missing = set(logins) - resolved.keys()
+        if missing:
+            _log.error("could not resolve %d twitch logins: %s", len(missing), ", ".join(missing))
 
         return resolved
 
@@ -57,7 +61,7 @@ class Client:
                 try:
                     created.append(await subscribe(streamer_id))
                 except Unauthorized:
-                    raise 
+                    raise
                 except HTTPException:
                     _log.exception("%s failed for %s", subscribe.__name__, login)
         return tuple(created)
