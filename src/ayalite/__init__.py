@@ -19,5 +19,8 @@ def main() -> None:
 
     try:
         asyncio.run(run())
-    except KeyboardInterrupt:
+    # KeyboardInterrupt is ctrl-c; CancelledError is what asyncio.run re-raises
+    # after a signal handler cancelled the main task. cleanup has already run by
+    # the time either lands here.
+    except (KeyboardInterrupt, asyncio.CancelledError):
         logging.getLogger(__name__).info("shutting down")

@@ -5,6 +5,10 @@ import discord
 
 _log = logging.getLogger(__name__)
 
+# shutdown is often already running under a cancelled task; don't let a wedged
+# socket hold the process open waiting on a presence frame nobody will read
+PRESENCE_TIMEOUT = 5.0
+
 
 class DiscordSender:
     def __init__(self, token: str, watching: str | None = None) -> None:
@@ -49,6 +53,18 @@ class DiscordSender:
         return await channel.send(content)
 
     async def close(self) -> None:
+        # go offline while the socket is still up. closing the gateway cleanly
+        # gets there on its own, but the explicit push is immediate rather than
+        # leaving a ghost "online" bot until discord times the session out
+        if self.client.is_ready():
+            try:
+                await asyncio.wait_for(
+                    self.client.change_presence(status=discord.Status.offline),
+                    timeout=PRESENCE_TIMEOUT,
+                )
+            except (TimeoutError, OSError, discord.DiscordException):
+                _log.warning("could not clear presence before shutdown", exc_info=True)
+
         await self.client.close()  # makes connect() unwind
 
         task, self._gateway_task = self._gateway_task, None

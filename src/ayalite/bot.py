@@ -1,6 +1,8 @@
+import asyncio
 import logging
 import os
 import random
+import signal
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
@@ -51,7 +53,30 @@ def load_config(config_path: Path = Path("config.toml")) -> Config:
     except KeyError as exc:
         raise RuntimeError(f"missing required config value: {exc}") from exc
 
+def _install_signal_handlers() -> None:
+    """Route termination signals into cancellation of the running task.
+
+    ctrl-c already behaves: asyncio.Runner cancels the main task on the first
+    SIGINT, so run()'s finally gets to shut the gateway down. SIGTERM/SIGHUP
+    (systemd, docker stop, a closed terminal) default to killing the process
+    outright, which drops the websocket with no close frame and leaves the bot
+    showing as online until discord's session timeout notices.
+    """
+    loop = asyncio.get_running_loop()
+    task = asyncio.current_task()
+    if task is None:
+        return
+
+    for sig in (signal.SIGTERM, signal.SIGHUP):
+        try:
+            loop.add_signal_handler(sig, task.cancel)
+        except (NotImplementedError, RuntimeError, AttributeError):
+            # not supported on windows, and non-main threads can't take signals
+            _log.debug("could not install a handler for %s", sig.name)
+
+
 async def run() -> None:
+    _install_signal_handlers()
     config = load_config()
 
     helper = Client()
