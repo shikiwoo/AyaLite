@@ -48,7 +48,7 @@ class Client:
         store.save_id(conduit.id)
         return conduit
 
-    async def sub_stream_events(self, client: ClientApp, streamer_ids: dict[str, str]) -> None:
+    async def sub_stream_events(self, client: ClientApp, streamer_ids: dict[str, str]) -> tuple[Subscription, ...]:
         subscribe_to = (client.eventsub.stream_online, client.eventsub.stream_offline)
 
         created: list[Subscription] = []
