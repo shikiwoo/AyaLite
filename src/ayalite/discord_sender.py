@@ -1,5 +1,8 @@
 import asyncio
 import logging
+import random
+from collections.abc import Iterator, Sequence
+from contextlib import suppress
 
 import discord
 
@@ -9,21 +12,45 @@ _log = logging.getLogger(__name__)
 # socket hold the process open waiting on a presence frame nobody will read
 PRESENCE_TIMEOUT = 5.0
 
+PRESENCE_ROTATE_INTERVAL = 20 * 60  # seconds
+
+
+def _watching(name: str) -> discord.Activity:
+    return discord.Activity(type=discord.ActivityType.watching, name=name)
+
+
+def _rotation(names: Sequence[str]) -> Iterator[str]:
+    """Yield names in a shuffled order, reshuffling after every full pass.
+
+    Picking independently at random each time would repeat the same streamer
+    back to back often enough to look stuck, and would starve the tail of a
+    long list. A reshuffled pass gives everyone equal airtime.
+    """
+    pool = list(names)
+    previous: str | None = None
+    while True:
+        random.shuffle(pool)
+        if len(pool) > 1 and pool[0] == previous:
+            # ...and don't repeat across the seam between two passes either
+            pool.append(pool.pop(0))
+        yield from pool
+        previous = pool[-1]
+
 
 class DiscordSender:
-    def __init__(self, token: str, watching: str | None = None) -> None:
+    def __init__(self, token: str, watching: Sequence[str] = ()) -> None:
         self._token = token
         self._gateway_task: asyncio.Task[None] | None = None
-        # the activity rides along with the gateway IDENTIFY, so it has to be
-        # decided before we connect rather than pushed afterwards
-        activity = (
-            discord.Activity(type=discord.ActivityType.watching, name=watching)
-            if watching is not None
-            else None
-        )
+        self._rotate_task: asyncio.Task[None] | None = None
+        self._names = tuple(watching)
+        self._rotation = _rotation(self._names) if self._names else None
+
+        # the activity rides along with the gateway IDENTIFY, so the first pick
+        # has to be made before we connect rather than pushed afterwards
+        self.current = next(self._rotation) if self._rotation else None
         self.client = discord.Client(
             intents=discord.Intents.none(),
-            activity=activity,
+            activity=_watching(self.current) if self.current else None,
             status=discord.Status.online,
         )
 
@@ -47,12 +74,47 @@ class DiscordSender:
             self._gateway_task.result()  # re-raises if it failed
             raise RuntimeError("discord gateway closed before the client was ready")
 
+        _log.info("presence: watching %s", self.current)
+        # nothing to rotate through with a single channel - the status would
+        # just be rewritten with the name it already has
+        if len(self._names) > 1:
+            self._rotate_task = asyncio.create_task(self._rotate_presence())
+
+    async def _rotate_presence(self) -> None:
+        assert self._rotation is not None
+        while True:
+            await asyncio.sleep(PRESENCE_ROTATE_INTERVAL)
+            name = next(self._rotation)
+            activity = _watching(name)
+            try:
+                await self.client.change_presence(activity=activity)
+            except (OSError, discord.DiscordException):
+                # the next tick will try again; a reconnect in the meantime
+                # re-sends whatever presence is on the client
+                _log.warning("could not rotate presence to %s", name, exc_info=True)
+                continue
+
+            # change_presence only touches the live socket. the reconnect
+            # IDENTIFY reads client.activity, so without this a dropped gateway
+            # would silently revert the status to the one picked at startup.
+            self.client.activity = activity
+            self.current = name
+            _log.info("presence: watching %s", name)
+
     async def send(self, channel_id: int, content: str) -> discord.Message:
         # send message to channel with the provided ID
         channel = self.client.get_partial_messageable(channel_id)
         return await channel.send(content)
 
     async def close(self) -> None:
+        # stop rotating first, so it can't push a fresh "watching" frame in
+        # between the offline push below and the socket actually closing
+        rotate, self._rotate_task = self._rotate_task, None
+        if rotate is not None:
+            rotate.cancel()
+            with suppress(asyncio.CancelledError):
+                await rotate
+
         # go offline while the socket is still up. closing the gateway cleanly
         # gets there on its own, but the explicit push is immediate rather than
         # leaving a ghost "online" bot until discord times the session out
