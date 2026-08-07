@@ -21,13 +21,24 @@ class Client:
         if client.application is None:
             raise RuntimeError("client is not authorized - call build_client first!!")
 
-        users_info = await client.application.get_users(user_logins=set(logins))
+        if not logins:
+            return {}
+
+        # twitch returns the canonical lowercase login, so normalise before
+        # diffing or correctly-resolved mixed-case entries look "missing".
+        # NOTE: get_users caps at 100 per call; chunk here if we ever exceed that.
+        requested = {login.lower() for login in logins}
+
+        users_info = await client.application.get_users(user_logins=requested)
         resolved = {u.identity.login: u.identity.id for u in users_info}
 
         # log missing logins as errors:
-        missing = set(logins) - resolved.keys()
+        missing = requested - resolved.keys()
         if missing:
-            _log.error("could not resolve %d twitch logins: %s", len(missing), ", ".join(missing))
+            _log.error(
+                "could not resolve %d twitch logins: %s",
+                len(missing), ", ".join(sorted(missing)),
+            )
 
         return resolved
 
