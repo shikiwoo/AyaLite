@@ -22,7 +22,7 @@ A small Discord bot that posts a notification when the Twitch channels you follo
 ### 1. Install
 
 ```fish
-git clone <your-repo-url> AyaLite
+git clone shikiwoo/AyaLite
 cd AyaLite
 uv sync
 ```
