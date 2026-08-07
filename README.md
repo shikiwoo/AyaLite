@@ -121,3 +121,7 @@ Logs go to stdout at INFO. The `twitch` and `discord` loggers are pinned to WARN
 - `_build_live_embed`'s `stream` parameter is untyped, so its attribute access is unchecked
 - `deprecated_modules/` is dead code from earlier iterations
 - No tests
+- last stretch was vibe coded
+
+## Use of AI in this project
+I'm by no means a programmer, and I do not claim any expertise in development. Hence, why I've been relying a lot on Claude to review files for me, and in the last stretch (entirety of bot.py and most of twitch_events were vibe coded. I just wanted to get this over with, as I was getting quite burnt out from this. 
