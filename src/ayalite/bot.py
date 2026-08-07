@@ -1,5 +1,6 @@
 import logging
 import os
+import random
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
@@ -55,11 +56,14 @@ async def run() -> None:
 
     helper = Client()
     client = await helper.build_client(config.twitch_client_id, config.twitch_client_secret)
-    sender = DiscordSender(config.discord_token)
+    # picked before connecting: the presence goes out with the gateway IDENTIFY
+    watching = random.choice(config.channels) if config.channels else None
+    sender = DiscordSender(config.discord_token, watching=watching)
 
     try:
         # validate the discord token before creating any twitch subscriptions
         await sender.start()
+        _log.info("presence: watching %s", watching)
 
         streamer_ids = await helper.resolve_streamer_ids(client, config.channels)
 
