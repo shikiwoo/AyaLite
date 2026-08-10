@@ -161,7 +161,9 @@ class DiscordSender:
             ),
         )
 
-    async def mark_offline(self, channel_id: int, message_id: int) -> None:
+    async def mark_offline(
+        self, channel_id: int, message_id: int, image_url: str | None = None
+    ) -> None:
         channel = self.client.get_partial_messageable(channel_id)
         # need the full Message here (not a PartialMessage) so we can read its
         # existing embed back and mutate it, rather than rebuilding from scratch
@@ -169,6 +171,10 @@ class DiscordSender:
         embed = message.embeds[0]
         embed.color = discord.Color.greyple()  # dim it
         embed.set_footer(text="Offline")
+        # swap the live preview for the channel's offline banner. passing None
+        # drops the image instead, which is what channels without a banner get -
+        # better an embed with no picture than a frozen frame of a dead stream.
+        embed.set_image(url=image_url)
         # content=None clears the role ping (the MISSING default would leave it
         # in place); editing doesn't re-notify, so nobody gets pinged twice
         await message.edit(content=None, embed=embed)
