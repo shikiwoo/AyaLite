@@ -1,0 +1,15 @@
+# Copy to compose.yaml, then fill in .env and config.toml next to it.
+# NOTE: entries in .env must have no spaces around "=" (DISCORD_BOT_TOKEN=...).
+services:
+  ayalite:
+    image: ghcr.io/shikiwoo/ayalite:latest
+    # build: .  # uncomment to build locally instead of pulling
+    container_name: ayalite
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./config.toml:/app/config.toml:ro
+      - ayalite-state:/state
+
+volumes:
+  ayalite-state:

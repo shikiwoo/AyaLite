@@ -100,6 +100,13 @@ docker run -d --name ayalite --restart unless-stopped \
 
 `--env-file` doesn't tolerate spaces around the `=` the way the `.env` loader used by `uv run` does, so write the entries as `DISCORD_BOT_TOKEN=...` with no spaces when using it.
 
+Or with Docker Compose, using the provided sample:
+
+```fish
+cp compose.sample.yaml compose.yaml
+docker compose up -d
+```
+
 To build the image yourself instead:
 
 ```fish
