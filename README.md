@@ -84,6 +84,30 @@ uv run python -m ayalite
 
 Stop it with Ctrl-C.
 
+### Docker
+
+The repo includes a `Dockerfile`, and a GitHub Actions workflow publishes the image to `ghcr.io/shikiwoo/ayalite` (tagged `latest` and by commit SHA) on every push to `main`.
+
+Config and secrets are not baked into the image. Mount `config.toml` at `/app/config.toml`, pass the secrets as environment variables, and mount a volume at `/state` so the cached conduit ID survives restarts:
+
+```fish
+docker run -d --name ayalite --restart unless-stopped \
+  --env-file .env \
+  -v "$PWD/config.toml:/app/config.toml:ro" \
+  -v ayalite-state:/state \
+  ghcr.io/shikiwoo/ayalite:latest
+```
+
+`--env-file` doesn't tolerate spaces around the `=` the way the `.env` loader used by `uv run` does, so write the entries as `DISCORD_BOT_TOKEN=...` with no spaces when using it.
+
+To build the image yourself instead:
+
+```fish
+docker build -t ayalite .
+```
+
+and swap `ghcr.io/shikiwoo/ayalite:latest` for `ayalite` in the command above. Inside the container `XDG_STATE_HOME` is set to `/state`, so the conduit ID is stored at `/state/ayalite/conduit_id`.
+
 ## How it works
 
 Twitch EventSub is consumed through a **conduit** — a transport that holds your subscriptions independently of any single connection. The bot creates one conduit with a single shard, attaches a WebSocket to it, and subscribes to `stream.online` and `stream.offline` for each configured channel.
@@ -129,6 +153,7 @@ The offline banner gets no such parameter — it's genuinely the same image ever
 | `twitch_conduit_store.py` | Reads/writes the cached conduit ID |
 | `discord_sender.py` | Posting and editing Discord messages |
 | `__init__.py` | Entry point and logging setup |
+| `Dockerfile` | Container image build |
 
 ## Logging
 
