@@ -86,7 +86,15 @@ Stop it with Ctrl-C.
 
 ### Docker
 
-The repo includes a `Dockerfile`, and a GitHub Actions workflow publishes the image to `ghcr.io/shikiwoo/ayalite` (tagged `latest` and by commit SHA) on every push to `main`.
+The repo includes a `Dockerfile`, and a GitHub Actions workflow builds the image for `linux/amd64` and `linux/arm64` and publishes it to `ghcr.io/shikiwoo/ayalite`:
+
+| Trigger | Tags pushed |
+| --- | --- |
+| Push to `main` | `latest`, `sha-<commit>` |
+| Push a git tag like `v1.2.3` | `1.2.3`, `1.2`, `sha-<commit>` |
+| Pull request | none — the image is built only to check the `Dockerfile` still works |
+
+Changes that only touch Markdown files don't trigger a build.
 
 Config and secrets are not baked into the image. Mount `config.toml` at `/app/config.toml`, pass the secrets as environment variables, and mount a volume at `/state` so the cached conduit ID survives restarts:
 
@@ -100,14 +108,15 @@ docker run -d --name ayalite --restart unless-stopped \
 
 `--env-file` doesn't tolerate spaces around the `=` the way the `.env` loader used by `uv run` does, so write the entries as `DISCORD_BOT_TOKEN=...` with no spaces when using it.
 
-Or with Docker Compose, using the provided sample:
+Or with Docker Compose, using the included `docker-compose.yml` (with `.env` and `config.toml` next to it):
 
 ```fish
-cp compose.sample.yaml compose.yaml
 docker compose up -d
 ```
 
-To build the image yourself instead:
+Updating to the newest image is `docker compose pull && docker compose up -d`. To change anything for your setup only, put it in a `compose.override.yaml` — Compose merges it on top of `docker-compose.yml` automatically, and it's gitignored. To build the image locally rather than pulling it, run `docker compose up -d --build`.
+
+To build the image yourself without Compose:
 
 ```fish
 docker build -t ayalite .
@@ -161,6 +170,7 @@ The offline banner gets no such parameter — it's genuinely the same image ever
 | `discord_sender.py` | Posting and editing Discord messages |
 | `__init__.py` | Entry point and logging setup |
 | `Dockerfile` | Container image build |
+| `docker-compose.yml` | Compose setup for running the published image |
 
 ## Logging
 
