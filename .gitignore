@@ -16,4 +16,4 @@ wheels/
 secrets.toml
 config.toml
 .env
-compose.yaml
+compose.override.yaml
